@@ -1,55 +1,50 @@
-const express = require('express');
-const multer = require('multer');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
-const { exec } = require('child_process');
+const express = require("express");
+const cors = require("cors");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
-const PORT = 5000;
+const port = process.env.PORT || 5000;
 
-// Middleware
+// Middleware CORS
 app.use(cors());
-app.use(express.json());
 
-// Setup Multer
-const upload = multer({ dest: 'uploads/' });
+// Middleware untuk menerima form-data
+const upload = multer({ dest: "uploads/" });
 
-// Route untuk konversi file
-app.post('/api/convert', upload.single('file'), (req, res) => {
+// Route root biar gak "Cannot GET /"
+app.get("/", (req, res) => {
+  res.send("Backend aktif 🚀");
+});
+
+// Route convert
+app.post("/api/convert", upload.single("file"), (req, res) => {
   const file = req.file;
-  const targetFormat = req.body.format;
+  const format = req.body.format;
 
-  if (!file || !targetFormat) {
-    return res.status(400).json({ error: 'File dan format diperlukan' });
+  if (!file || !format) {
+    return res.status(400).json({ error: "File dan format dibutuhkan" });
   }
 
-  const originalExt = path.extname(file.originalname);
-  const baseName = path.basename(file.originalname, originalExt);
-  const outputFileName = `${baseName}.${targetFormat}`;
-  const outputPath = path.join(__dirname, 'uploads', outputFileName);
+  const ext = format.toLowerCase();
+  const newFileName = `${file.filename}.${ext}`;
+  const newPath = path.join("uploads", newFileName);
 
-  const command = `ffmpeg -i "${file.path}" "${outputPath}"`;
-
-  exec(command, (err) => {
+  fs.rename(file.path, newPath, (err) => {
     if (err) {
-      console.error('Konversi gagal:', err);
-      return res.status(500).json({ error: 'Konversi gagal' });
+      console.error("❌ Gagal rename file:", err);
+      return res.status(500).json({ error: "Konversi gagal" });
     }
 
-    // Kirim file hasil konversi
-    res.download(outputPath, outputFileName, (err) => {
-      // Hapus file sementara setelah dikirim
-      fs.unlink(file.path, () => {});
-      fs.unlink(outputPath, () => {});
-      if (err) {
-        console.error('Gagal mengirim file:', err);
-      }
-    });
+    const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${newFileName}`;
+    res.json({ downloadUrl: fileUrl });
   });
 });
 
-// Jalankan server
-app.listen(PORT, () => {
-  console.log(`Server berjalan di http://localhost:${PORT}`);
+// Serve folder uploads
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+app.listen(port, () => {
+  console.log(`Server berjalan di http://localhost:${port}`);
 });

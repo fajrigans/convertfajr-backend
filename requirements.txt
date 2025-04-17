@@ -4,3 +4,4 @@ ffmpeg-python
 python-dotenv
 werkzeug
 flask-cors
+gunicorn

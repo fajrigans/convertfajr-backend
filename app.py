@@ -20,11 +20,7 @@ def run_command(command):
     return result.stdout.decode()
 
 def convert_file(input_path, output_path, file_type):
-    if file_type == "image":
-        run_command(f"ffmpeg -y -i {input_path} {output_path}")
-    elif file_type == "audio":
-        run_command(f"ffmpeg -y -i {input_path} {output_path}")
-    elif file_type == "video":
+    if file_type in ["image", "audio", "video"]:
         run_command(f"ffmpeg -y -i {input_path} {output_path}")
     elif file_type == "document":
         run_command(f"pandoc {input_path} -o {output_path}")
@@ -50,6 +46,7 @@ def convert():
     ext = os.path.splitext(file.filename)[1].lower()
     mime_type = mimetypes.guess_type(file.filename)[0] or ""
     file_type = "unknown"
+
     if "image" in mime_type:
         file_type = "image"
     elif "audio" in mime_type:
@@ -77,5 +74,7 @@ def convert():
 def download(filename):
     return send_from_directory(RESULT_FOLDER, filename)
 
+# ✅ FIX for Railway deployment
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

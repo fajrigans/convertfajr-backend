@@ -1,0 +1,5 @@
+flask
+python-magic
+ffmpeg-python
+python-dotenv
+werkzeug

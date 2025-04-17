@@ -14,12 +14,15 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
 def run_command(command):
+    print(f"Running command: {command}")
     result = subprocess.run(command, shell=True, capture_output=True)
     if result.returncode != 0:
+        print("Command failed:", result.stderr.decode())
         raise Exception(result.stderr.decode())
     return result.stdout.decode()
 
 def convert_file(input_path, output_path, file_type):
+    print(f"Converting {input_path} to {output_path} as {file_type}")
     if file_type in ["image", "audio", "video"]:
         run_command(f"ffmpeg -y -i {input_path} {output_path}")
     elif file_type == "document":
@@ -34,10 +37,17 @@ def convert_file(input_path, output_path, file_type):
     else:
         raise Exception("Unsupported file type")
 
+@app.route("/")
+def index():
+    print("Ping: root / accessed")
+    return "File Converter Backend is running!"
+
 @app.route("/api/convert", methods=["POST"])
 def convert():
+    print("Received /api/convert POST request")
     if 'file' not in request.files:
         return jsonify({"error": "No file provided"}), 400
+
     file = request.files['file']
     output_format = request.form.get('outputFormat')
     if not output_format:
@@ -46,7 +56,6 @@ def convert():
     ext = os.path.splitext(file.filename)[1].lower()
     mime_type = mimetypes.guess_type(file.filename)[0] or ""
     file_type = "unknown"
-
     if "image" in mime_type:
         file_type = "image"
     elif "audio" in mime_type:
@@ -66,15 +75,19 @@ def convert():
     try:
         convert_file(input_path, output_path, file_type)
         download_url = f"/converted/{os.path.basename(output_path)}"
+        print("Conversion successful:", download_url)
         return jsonify({"url": download_url})
     except Exception as e:
+        print("Conversion failed:", str(e))
         return jsonify({"error": str(e)}), 500
 
 @app.route('/converted/<filename>')
 def download(filename):
+    print(f"Download request for: {filename}")
     return send_from_directory(RESULT_FOLDER, filename)
 
-# ✅ FIX for Railway deployment
+# 👇 ini penting agar jalan di Railway
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    print(f"Starting server on port {port}...")
     app.run(host="0.0.0.0", port=port)

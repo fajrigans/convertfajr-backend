@@ -3,3 +3,4 @@ python-magic
 ffmpeg-python
 python-dotenv
 werkzeug
+flask-cors

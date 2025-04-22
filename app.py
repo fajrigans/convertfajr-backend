@@ -15,9 +15,10 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 
 @app.route("/")
 def index():
-    return "✅ Flask backend aktif dan berjalan di Railway!"
+    return "✅ Flask backend aktif dan berjalan!"
 
 def run_command(command):
+    print(f"Running: {command}")  # Tambahan log debugging
     result = subprocess.run(command, shell=True, capture_output=True)
     if result.returncode != 0:
         raise Exception(result.stderr.decode())
@@ -34,22 +35,26 @@ def convert_file(input_path, output_path, file_type):
         elif output_path.endswith(".tar.gz"):
             run_command(f"tar -czf \"{output_path}\" -C \"{os.path.dirname(input_path)}\" \"{os.path.basename(input_path)}\"")
         else:
-            raise Exception("Unsupported archive output format.")
+            raise Exception("❌ Format arsip tidak didukung.")
     else:
-        raise Exception("Unsupported file type")
+        raise Exception("❌ Jenis file tidak didukung.")
 
 @app.route("/api/convert", methods=["POST"])
 def convert():
     if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+        return jsonify({"error": "❌ File tidak ditemukan."}), 400
+
     file = request.files['file']
     output_format = request.form.get('outputFormat')
+
     if not output_format:
-        return jsonify({"error": "Output format required"}), 400
+        return jsonify({"error": "❌ Format output harus dipilih."}), 400
 
     ext = os.path.splitext(file.filename)[1].lower()
     mime_type = mimetypes.guess_type(file.filename)[0] or ""
     file_type = "unknown"
+
+    # Deteksi jenis file
     if "image" in mime_type:
         file_type = "image"
     elif "audio" in mime_type:
@@ -61,9 +66,12 @@ def convert():
     elif ext in ['.zip', '.rar', '.tar', '.gz']:
         file_type = "archive"
 
-    unique_name = str(uuid.uuid4())
-    input_path = os.path.join(UPLOAD_FOLDER, unique_name + ext)
-    output_path = os.path.join(RESULT_FOLDER, unique_name + "." + output_format)
+    if file_type == "unknown":
+        return jsonify({"error": "❌ Jenis file tidak dikenali."}), 400
+
+    unique_id = str(uuid.uuid4())
+    input_path = os.path.join(UPLOAD_FOLDER, unique_id + ext)
+    output_path = os.path.join(RESULT_FOLDER, unique_id + "." + output_format)
     file.save(input_path)
 
     try:
@@ -71,13 +79,13 @@ def convert():
         download_url = f"/converted/{os.path.basename(output_path)}"
         return jsonify({"url": download_url})
     except Exception as e:
+        print("Error:", e)  # Log ke terminal
         return jsonify({"error": str(e)}), 500
 
-@app.route('/converted/<filename>')
+@app.route("/converted/<filename>")
 def download(filename):
     return send_from_directory(RESULT_FOLDER, filename)
 
-# ✅ Penting untuk Railway: gunakan PORT dari environment
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

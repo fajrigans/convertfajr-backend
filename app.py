@@ -6,7 +6,7 @@ import uuid
 import mimetypes
 
 app = Flask(__name__)
-CORS(app, origins=["https://fajrconvert.vercel.app"])
+CORS(app, origins=["https://fajrconvert.vercel.app","http://localhost:5173"])
 
 
 UPLOAD_FOLDER = "uploads"

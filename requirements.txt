@@ -5,3 +5,5 @@ python-dotenv
 werkzeug
 flask-cors
 gunicorn
+pandoc
+ffmpeg

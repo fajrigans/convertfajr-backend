@@ -8,7 +8,7 @@ import mimetypes
 app = Flask(__name__)
 CORS(app, origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])
 
-# Konfigurasi batas upload file (50MB)
+# Batas ukuran file: 50MB
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 UPLOAD_FOLDER = "uploads"
@@ -21,10 +21,13 @@ def index():
     return "✅ Flask backend aktif dan berjalan!"
 
 def run_command(command):
-    print(f"Running: {command}")
+    print(f"📦 Menjalankan: {command}")
     result = subprocess.run(command, shell=True, capture_output=True)
     if result.returncode != 0:
-        raise Exception(result.stderr.decode())
+        error_output = result.stderr.decode()
+        print("❌ Error saat menjalankan command:")
+        print(error_output)
+        raise Exception("Gagal menjalankan perintah:\n" + error_output)
     return result.stdout.decode()
 
 def convert_file(input_path, output_path, file_type):
@@ -81,7 +84,6 @@ def convert():
         download_url = f"/converted/{os.path.basename(output_path)}"
         return jsonify({"url": download_url})
     except Exception as e:
-        print("Error:", e)
         return jsonify({"error": str(e)}), 500
 
 @app.route("/converted/<filename>")
@@ -90,4 +92,5 @@ def download(filename):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    print(f"🚀 Backend Flask berjalan di port {port}")
     app.run(host="0.0.0.0", port=port)

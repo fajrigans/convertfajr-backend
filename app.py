@@ -6,8 +6,10 @@ import uuid
 import mimetypes
 
 app = Flask(__name__)
-CORS(app, origins=["https://fajrconvert.vercel.app","http://localhost:5173"])
+CORS(app, origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])
 
+# Konfigurasi batas upload file (50MB)
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "converted"
@@ -19,7 +21,7 @@ def index():
     return "✅ Flask backend aktif dan berjalan!"
 
 def run_command(command):
-    print(f"Running: {command}")  # Tambahan log debugging
+    print(f"Running: {command}")
     result = subprocess.run(command, shell=True, capture_output=True)
     if result.returncode != 0:
         raise Exception(result.stderr.decode())
@@ -55,7 +57,6 @@ def convert():
     mime_type = mimetypes.guess_type(file.filename)[0] or ""
     file_type = "unknown"
 
-    # Deteksi jenis file
     if "image" in mime_type:
         file_type = "image"
     elif "audio" in mime_type:
@@ -80,7 +81,7 @@ def convert():
         download_url = f"/converted/{os.path.basename(output_path)}"
         return jsonify({"url": download_url})
     except Exception as e:
-        print("Error:", e)  # Log ke terminal
+        print("Error:", e)
         return jsonify({"error": str(e)}), 500
 
 @app.route("/converted/<filename>")

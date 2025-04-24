@@ -1,12 +1,13 @@
 # Gunakan image Python slim
 FROM python:3.11-slim
 
-# Install alat-alat konversi yang dibutuhkan
+# Install alat-alat konversi yang dibutuhkan termasuk pdftotext (dari poppler-utils)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     pandoc \
     zip \
     tar \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -23,5 +24,3 @@ EXPOSE 8080
 
 # Jalankan aplikasi
 CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8080", "app:app"]
-
-

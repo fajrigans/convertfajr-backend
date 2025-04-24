@@ -8,8 +8,7 @@ import mimetypes
 app = Flask(__name__)
 CORS(app, origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])
 
-# Batas ukuran file: 50MB
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "converted"
@@ -21,20 +20,28 @@ def index():
     return "✅ Flask backend aktif dan berjalan!"
 
 def run_command(command):
-    print(f"📦 Menjalankan: {command}")
+    print(f"Running: {command}")
     result = subprocess.run(command, shell=True, capture_output=True)
     if result.returncode != 0:
-        error_output = result.stderr.decode()
-        print("❌ Error saat menjalankan command:")
-        print(error_output)
-        raise Exception("Gagal menjalankan perintah:\n" + error_output)
+        raise Exception(result.stderr.decode())
     return result.stdout.decode()
 
-def convert_file(input_path, output_path, file_type):
+def convert_file(input_path, output_path, file_type, output_ext):
     if file_type in ["image", "audio", "video"]:
         run_command(f"ffmpeg -y -i \"{input_path}\" \"{output_path}\"")
     elif file_type == "document":
-        run_command(f"pandoc \"{input_path}\" -o \"{output_path}\"")
+        if input_path.lower().endswith(".pdf"):
+            if output_ext == ".txt":
+                # PDF langsung ke TXT
+                run_command(f"pdftotext \"{input_path}\" \"{output_path}\"")
+            else:
+                # PDF → TXT → format lain (DOCX, HTML, dll)
+                temp_txt = os.path.splitext(output_path)[0] + "_temp.txt"
+                run_command(f"pdftotext \"{input_path}\" \"{temp_txt}\"")
+                run_command(f"pandoc \"{temp_txt}\" -o \"{output_path}\"")
+                os.remove(temp_txt)
+        else:
+            run_command(f"pandoc \"{input_path}\" -o \"{output_path}\"")
     elif file_type == "archive":
         if output_path.endswith(".zip"):
             run_command(f"zip -j \"{output_path}\" \"{input_path}\"")
@@ -57,6 +64,7 @@ def convert():
         return jsonify({"error": "❌ Format output harus dipilih."}), 400
 
     ext = os.path.splitext(file.filename)[1].lower()
+    output_ext = "." + output_format
     mime_type = mimetypes.guess_type(file.filename)[0] or ""
     file_type = "unknown"
 
@@ -76,14 +84,15 @@ def convert():
 
     unique_id = str(uuid.uuid4())
     input_path = os.path.join(UPLOAD_FOLDER, unique_id + ext)
-    output_path = os.path.join(RESULT_FOLDER, unique_id + "." + output_format)
+    output_path = os.path.join(RESULT_FOLDER, unique_id + output_ext)
     file.save(input_path)
 
     try:
-        convert_file(input_path, output_path, file_type)
+        convert_file(input_path, output_path, file_type, output_ext)
         download_url = f"/converted/{os.path.basename(output_path)}"
         return jsonify({"url": download_url})
     except Exception as e:
+        print("Error:", e)
         return jsonify({"error": str(e)}), 500
 
 @app.route("/converted/<filename>")
@@ -92,5 +101,4 @@ def download(filename):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    print(f"🚀 Backend Flask berjalan di port {port}")
     app.run(host="0.0.0.0", port=port)

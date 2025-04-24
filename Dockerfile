@@ -1,27 +1,33 @@
-FROM python:3.11-slim
+FROM python:3.10-slim
 
-# Install dependencies
+# Install OS dependencies
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     pandoc \
-    texlive-latex-base \
-    texlive-fonts-recommended \
-    texlive-extra-utils \
-    poppler-utils \
-    zip \
-    tar \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    python3-pip \
+    libffi-dev \
+    libcairo2 \
+    pango1.0-tools \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libxml2 \
+    libxslt1.1 \
+    libjpeg62-turbo \
+    libssl-dev \
+    fonts-liberation \
+    fonts-dejavu \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Python packages
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+# Install WeasyPrint and dependencies
+RUN pip install --no-cache-dir weasyprint gunicorn
 
-# Copy project files
-COPY . .
+# Set working directory
+WORKDIR /app
+COPY . /app
 
-# Port untuk Railway (gunakan PORT env)
-ENV PORT=8080
+# Expose port
+EXPOSE 8080
 
-# Start pakai gunicorn
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
+# Start the app with Gunicorn
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--timeout", "120"]

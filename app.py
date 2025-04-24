@@ -47,6 +47,8 @@ def convert_file(input_path, output_path, file_type, output_ext):
                 run_command(f"pdftotext \"{input_path}\" \"{temp_txt}\"")
                 run_command(f"pandoc \"{temp_txt}\" -o \"{output_path}\"")
                 os.remove(temp_txt)
+        elif input_path.lower().endswith(".docx") and output_ext == ".pdf":
+            run_command(f"pandoc \"{input_path}\" -o \"{output_path}\" --pdf-engine=weasyprint")
         else:
             run_command(f"pandoc \"{input_path}\" -o \"{output_path}\"")
     elif file_type == "archive":

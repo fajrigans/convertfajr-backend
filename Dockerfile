@@ -1,26 +1,27 @@
-# Gunakan image Python slim
 FROM python:3.11-slim
 
-# Install alat-alat konversi yang dibutuhkan termasuk pdftotext (dari poppler-utils)
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     pandoc \
+    texlive-latex-base \
+    texlive-fonts-recommended \
+    texlive-extra-utils \
+    poppler-utils \
     zip \
     tar \
-    poppler-utils \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
+# Install Python packages
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Copy semua file ke container
+# Copy project files
 COPY . .
 
-# Install dependency Python
-RUN pip install --no-cache-dir -r requirements.txt
+# Port untuk Railway (gunakan PORT env)
+ENV PORT=8080
 
-# Tentukan port (Railway pakai variabel PORT)
-EXPOSE 8080
-
-# Jalankan aplikasi
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8080", "app:app"]
+# Start pakai gunicorn
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]

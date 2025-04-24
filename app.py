@@ -6,7 +6,9 @@ import uuid
 import mimetypes
 
 app = Flask(__name__)
-CORS(app, origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])
+
+# Izinkan origin frontend (Vercel dan lokal) untuk route API
+CORS(app, resources={r"/api/*": {"origins": ["https://fajrconvert.vercel.app", "http://localhost:5173"]}})
 
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 
@@ -22,6 +24,8 @@ def index():
 def run_command(command):
     print(f"Running: {command}")
     result = subprocess.run(command, shell=True, capture_output=True)
+    print("stdout:", result.stdout.decode())
+    print("stderr:", result.stderr.decode())
     if result.returncode != 0:
         raise Exception(result.stderr.decode())
     return result.stdout.decode()
@@ -32,10 +36,8 @@ def convert_file(input_path, output_path, file_type, output_ext):
     elif file_type == "document":
         if input_path.lower().endswith(".pdf"):
             if output_ext == ".txt":
-                # PDF langsung ke TXT
                 run_command(f"pdftotext \"{input_path}\" \"{output_path}\"")
             else:
-                # PDF → TXT → format lain (DOCX, HTML, dll)
                 temp_txt = os.path.splitext(output_path)[0] + "_temp.txt"
                 run_command(f"pdftotext \"{input_path}\" \"{temp_txt}\"")
                 run_command(f"pandoc \"{temp_txt}\" -o \"{output_path}\"")

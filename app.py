@@ -4,11 +4,10 @@ import os
 import subprocess
 import uuid
 import mimetypes
+import shutil
 
 app = Flask(__name__)
-
-# Izinkan origin frontend (Vercel dan lokal) untuk route API
-CORS(app, resources={r"/api/*": {"origins": ["https://fajrconvert.vercel.app", "http://localhost:5173"]}})
+CORS(app, origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])
 
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 
@@ -21,11 +20,17 @@ os.makedirs(RESULT_FOLDER, exist_ok=True)
 def index():
     return "✅ Flask backend aktif dan berjalan!"
 
+@app.route("/debug")
+def debug():
+    return jsonify({
+        "ffmpeg": shutil.which("ffmpeg"),
+        "pandoc": shutil.which("pandoc"),
+        "pdftotext": shutil.which("pdftotext")
+    })
+
 def run_command(command):
     print(f"Running: {command}")
     result = subprocess.run(command, shell=True, capture_output=True)
-    print("stdout:", result.stdout.decode())
-    print("stderr:", result.stderr.decode())
     if result.returncode != 0:
         raise Exception(result.stderr.decode())
     return result.stdout.decode()

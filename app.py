@@ -5,10 +5,11 @@ import subprocess
 import uuid
 import mimetypes
 import shutil
+from werkzeug.exceptions import RequestEntityTooLarge
 
 app = Flask(__name__)
 
-# ✅ CORS global configuration
+# ✅ CORS global
 CORS(app, origins=["https://fajrconvert.vercel.app", "http://localhost:5173"], methods=["GET", "POST"], supports_credentials=True)
 
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
@@ -24,6 +25,10 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
     return response
 
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    return jsonify({"error": "❌ Ukuran file terlalu besar. Maksimum 50MB."}), 413
+
 @app.route("/")
 def index():
     return "✅ Flask backend aktif dan berjalan!"
@@ -33,11 +38,14 @@ def debug():
     return jsonify({
         "ffmpeg": shutil.which("ffmpeg"),
         "pandoc": shutil.which("pandoc"),
+        "weasyprint": shutil.which("weasyprint"),
+        "pdflatex": shutil.which("pdflatex"),
+        "wkhtmltopdf": shutil.which("wkhtmltopdf"),
         "pdftotext": shutil.which("pdftotext")
     })
 
 def run_command(command):
-    print(f"Running: {command}")
+    print(f"⚙️ Running: {command}")
     result = subprocess.run(command, shell=True, capture_output=True)
     if result.returncode != 0:
         raise Exception(result.stderr.decode())
@@ -46,6 +54,7 @@ def run_command(command):
 def convert_file(input_path, output_path, file_type, output_ext):
     if file_type in ["image", "audio", "video"]:
         run_command(f"ffmpeg -y -i \"{input_path}\" \"{output_path}\"")
+
     elif file_type == "document":
         if input_path.lower().endswith(".pdf"):
             if output_ext == ".txt":
@@ -56,9 +65,14 @@ def convert_file(input_path, output_path, file_type, output_ext):
                 run_command(f"pandoc \"{temp_txt}\" -o \"{output_path}\"")
                 os.remove(temp_txt)
         elif input_path.lower().endswith(".docx") and output_ext == ".pdf":
-            run_command(f"pandoc \"{input_path}\" -o \"{output_path}\" --pdf-engine=weasyprint")
+            try:
+                run_command(f"pandoc \"{input_path}\" -o \"{output_path}\" --pdf-engine=pdflatex")
+            except Exception as e:
+                print("⚠️ Fallback PDF conversion:", e)
+                run_command(f"pandoc \"{input_path}\" -o \"{output_path}\"")
         else:
             run_command(f"pandoc \"{input_path}\" -o \"{output_path}\"")
+
     elif file_type == "archive":
         if output_path.endswith(".zip"):
             run_command(f"zip -j \"{output_path}\" \"{input_path}\"")
@@ -66,6 +80,7 @@ def convert_file(input_path, output_path, file_type, output_ext):
             run_command(f"tar -czf \"{output_path}\" -C \"{os.path.dirname(input_path)}\" \"{os.path.basename(input_path)}\"")
         else:
             raise Exception("❌ Format arsip tidak didukung.")
+
     else:
         raise Exception("❌ Jenis file tidak didukung.")
 
@@ -109,8 +124,8 @@ def convert():
         download_url = f"/converted/{os.path.basename(output_path)}"
         return jsonify({"url": download_url})
     except Exception as e:
-        print("Error:", e)
-        return jsonify({"error": str(e)}), 500
+        print("❌ Error saat konversi:", e)
+        return jsonify({"error": "Konversi gagal: " + str(e)}), 500
 
 @app.route("/converted/<filename>")
 def download(filename):

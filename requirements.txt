@@ -7,3 +7,9 @@ flask-cors
 gunicorn
 pandoc
 ffmpeg
+Flask==2.2.5
+Flask-Cors==3.0.10
+flask
+gunicorn
+flask-cors
+weasyprint

@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import os
 import subprocess
 import uuid
@@ -7,7 +7,9 @@ import mimetypes
 import shutil
 
 app = Flask(__name__)
-CORS(app, origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])
+
+# ✅ CORS global configuration: Allow Vercel and local dev
+CORS(app, resources={r"/*": {"origins": ["https://fajrconvert.vercel.app", "http://localhost:5173"]}}, supports_credentials=True)
 
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 
@@ -62,6 +64,7 @@ def convert_file(input_path, output_path, file_type, output_ext):
         raise Exception("❌ Jenis file tidak didukung.")
 
 @app.route("/api/convert", methods=["POST"])
+@cross_origin(origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])  # ✅ Tambahan CORS untuk endpoint ini
 def convert():
     if 'file' not in request.files:
         return jsonify({"error": "❌ File tidak ditemukan."}), 400
@@ -105,6 +108,7 @@ def convert():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/converted/<filename>")
+@cross_origin(origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])  # ✅ Optional CORS untuk akses download
 def download(filename):
     return send_from_directory(RESULT_FOLDER, filename)
 

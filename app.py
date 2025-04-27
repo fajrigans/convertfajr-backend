@@ -55,7 +55,6 @@ def convert_file(input_path, output_path, file_type, output_ext):
                 run_command(f'pandoc "{temp_txt}" -o "{output_path}"')
                 os.remove(temp_txt)
         elif ext == ".txt" and output_ext == ".pdf":
-            # ✅ Khusus .txt ➔ .pdf pakai WeasyPrint
             from weasyprint import HTML
             temp_html = input_path.replace('.txt', '_temp.html')
             with open(input_path, 'r', encoding='utf-8') as f:
@@ -65,8 +64,13 @@ def convert_file(input_path, output_path, file_type, output_ext):
                 f.write(html_content)
             HTML(temp_html).write_pdf(output_path)
             os.remove(temp_html)
+        elif ext == ".docx" and output_ext == ".pdf":
+            from weasyprint import HTML
+            temp_html = input_path.replace('.docx', '_temp.html')
+            run_command(f'pandoc "{input_path}" -o "{temp_html}"')
+            HTML(temp_html).write_pdf(output_path)
+            os.remove(temp_html)
         else:
-            # ✅ Yang lain langsung pandoc
             run_command(f'pandoc "{input_path}" -o "{output_path}"')
     elif file_type == "archive":
         if output_path.endswith(".zip"):

@@ -39,28 +39,25 @@ def run_command(command):
 
 def convert_file(input_path, output_path, file_type, output_ext):
     if file_type == "video":
-        # ✅ Untuk video, dengan encoding ffmpeg
         run_command(f'ffmpeg -y -i "{input_path}" -c:v libx264 -preset veryfast -crf 23 -c:a aac -strict experimental "{output_path}"')
     elif file_type == "audio":
         run_command(f'ffmpeg -y -i "{input_path}" "{output_path}"')
     elif file_type == "image":
         run_command(f'ffmpeg -y -i "{input_path}" "{output_path}"')
     elif file_type == "document":
-        if input_path.lower().endswith(".pdf"):
+        ext = os.path.splitext(input_path)[1].lower()
+        if ext == ".pdf":
             if output_ext == ".txt":
                 # ✅ PDF ➔ TXT langsung
                 run_command(f'pdftotext "{input_path}" "{output_path}"')
             else:
-                # ✅ PDF ➔ TXT dulu
+                # ✅ PDF ➔ TXT ➔ lalu ke format lain
                 temp_txt = input_path.replace('.pdf', '_temp.txt')
                 run_command(f'pdftotext "{input_path}" "{temp_txt}"')
-                # ✅ lalu TXT ➔ output (docx/md/html/rtf)
                 run_command(f'pandoc "{temp_txt}" -o "{output_path}"')
                 os.remove(temp_txt)
-        elif input_path.lower().endswith(".docx"):
-            run_command(f'pandoc "{input_path}" -o "{output_path}"')
         else:
-            # ✅ Untuk .txt, .md, .rtf biasa
+            # ✅ Kalau file dokumen biasa (docx, txt, md, rtf, dll)
             run_command(f'pandoc "{input_path}" -o "{output_path}"')
     elif file_type == "archive":
         if output_path.endswith(".zip"):

@@ -48,16 +48,25 @@ def convert_file(input_path, output_path, file_type, output_ext):
         ext = os.path.splitext(input_path)[1].lower()
         if ext == ".pdf":
             if output_ext == ".txt":
-                # ✅ PDF ➔ TXT langsung
                 run_command(f'pdftotext "{input_path}" "{output_path}"')
             else:
-                # ✅ PDF ➔ TXT ➔ lalu ke format lain
                 temp_txt = input_path.replace('.pdf', '_temp.txt')
                 run_command(f'pdftotext "{input_path}" "{temp_txt}"')
                 run_command(f'pandoc "{temp_txt}" -o "{output_path}"')
                 os.remove(temp_txt)
+        elif ext == ".txt" and output_ext == ".pdf":
+            # ✅ Khusus .txt ➔ .pdf pakai WeasyPrint
+            from weasyprint import HTML
+            temp_html = input_path.replace('.txt', '_temp.html')
+            with open(input_path, 'r', encoding='utf-8') as f:
+                text_content = f.read()
+            html_content = f"<pre>{text_content}</pre>"
+            with open(temp_html, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            HTML(temp_html).write_pdf(output_path)
+            os.remove(temp_html)
         else:
-            # ✅ Kalau file dokumen biasa (docx, txt, md, rtf, dll)
+            # ✅ Yang lain langsung pandoc
             run_command(f'pandoc "{input_path}" -o "{output_path}"')
     elif file_type == "archive":
         if output_path.endswith(".zip"):

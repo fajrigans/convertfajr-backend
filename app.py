@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import os
 import subprocess
 import uuid
@@ -8,8 +8,8 @@ import shutil
 
 app = Flask(__name__)
 
-# ✅ CORS global configuration
-CORS(app, origins=["https://fajrconvert.vercel.app", "http://localhost:5173"], methods=["GET", "POST"], supports_credentials=True)
+# ✅ CORS global configuration: Allow Vercel and local dev
+CORS(app, resources={r"/*": {"origins": ["https://fajrconvert.vercel.app", "http://localhost:5173"]}}, supports_credentials=True)
 
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 
@@ -17,12 +17,6 @@ UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "converted"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
-
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-    return response
 
 @app.route("/")
 def index():
@@ -44,32 +38,42 @@ def run_command(command):
     return result.stdout.decode()
 
 def convert_file(input_path, output_path, file_type, output_ext):
-    if file_type in ["image", "audio", "video"]:
-        run_command(f"ffmpeg -y -i \"{input_path}\" \"{output_path}\"")
+    if file_type == "video":
+        # ✅ Untuk video, dengan encoding ffmpeg
+        run_command(f'ffmpeg -y -i "{input_path}" -c:v libx264 -preset veryfast -crf 23 -c:a aac -strict experimental "{output_path}"')
+    elif file_type == "audio":
+        run_command(f'ffmpeg -y -i "{input_path}" "{output_path}"')
+    elif file_type == "image":
+        run_command(f'ffmpeg -y -i "{input_path}" "{output_path}"')
     elif file_type == "document":
         if input_path.lower().endswith(".pdf"):
             if output_ext == ".txt":
-                run_command(f"pdftotext \"{input_path}\" \"{output_path}\"")
+                # ✅ PDF ➔ TXT langsung
+                run_command(f'pdftotext "{input_path}" "{output_path}"')
             else:
-                temp_txt = os.path.splitext(output_path)[0] + "_temp.txt"
-                run_command(f"pdftotext \"{input_path}\" \"{temp_txt}\"")
-                run_command(f"pandoc \"{temp_txt}\" -o \"{output_path}\"")
+                # ✅ PDF ➔ TXT dulu
+                temp_txt = input_path.replace('.pdf', '_temp.txt')
+                run_command(f'pdftotext "{input_path}" "{temp_txt}"')
+                # ✅ lalu TXT ➔ output (docx/md/html/rtf)
+                run_command(f'pandoc "{temp_txt}" -o "{output_path}"')
                 os.remove(temp_txt)
-        elif input_path.lower().endswith(".docx") and output_ext == ".pdf":
-            run_command(f"pandoc \"{input_path}\" -o \"{output_path}\" --pdf-engine=weasyprint")
+        elif input_path.lower().endswith(".docx"):
+            run_command(f'pandoc "{input_path}" -o "{output_path}"')
         else:
-            run_command(f"pandoc \"{input_path}\" -o \"{output_path}\"")
+            # ✅ Untuk .txt, .md, .rtf biasa
+            run_command(f'pandoc "{input_path}" -o "{output_path}"')
     elif file_type == "archive":
         if output_path.endswith(".zip"):
-            run_command(f"zip -j \"{output_path}\" \"{input_path}\"")
+            run_command(f'zip -j "{output_path}" "{input_path}"')
         elif output_path.endswith(".tar.gz"):
-            run_command(f"tar -czf \"{output_path}\" -C \"{os.path.dirname(input_path)}\" \"{os.path.basename(input_path)}\"")
+            run_command(f'tar -czf "{output_path}" -C "{os.path.dirname(input_path)}" "{os.path.basename(input_path)}"')
         else:
             raise Exception("❌ Format arsip tidak didukung.")
     else:
         raise Exception("❌ Jenis file tidak didukung.")
 
 @app.route("/api/convert", methods=["POST"])
+@cross_origin(origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])  # ✅ Tambahan CORS untuk endpoint ini
 def convert():
     if 'file' not in request.files:
         return jsonify({"error": "❌ File tidak ditemukan."}), 400
@@ -113,6 +117,7 @@ def convert():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/converted/<filename>")
+@cross_origin(origins=["https://fajrconvert.vercel.app", "http://localhost:5173"])  # ✅ Optional CORS untuk akses download
 def download(filename):
     return send_from_directory(RESULT_FOLDER, filename)
 

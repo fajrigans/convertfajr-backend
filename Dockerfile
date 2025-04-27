@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     libgdk-pixbuf2.0-0 \
     libxml2 \
     libxslt1.1 \
+    poppler-utils \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set working directory

@@ -39,26 +39,14 @@ def run_command(command):
     return result.stdout.decode()
 
 def convert_file(input_path, output_path, file_type, output_ext):
-    ext = os.path.splitext(input_path)[1].lower()
-    output_ext = output_ext.lower()
-
     if file_type == "video":
-        if output_ext == ".webm":
-            # Untuk output webm harus VP9 + Opus
-            run_command(f'ffmpeg -y -i "{input_path}" -c:v libvpx-vp9 -b:v 1M -c:a libopus "{output_path}"')
-        elif output_ext in [".mp4", ".mov", ".avi", ".mkv"]:
-            # Untuk output MP4, MOV, AVI, MKV pakai x264
-            run_command(f'ffmpeg -y -i "{input_path}" -c:v libx264 -preset veryfast -crf 23 -c:a aac -strict experimental "{output_path}"')
-        else:
-            raise Exception(f"❌ Format video {output_ext} belum didukung.")
-    
+        run_command(f'ffmpeg -y -i "{input_path}" -c:v libx264 -preset veryfast -crf 23 -c:a aac -strict experimental "{output_path}"')
     elif file_type == "audio":
         run_command(f'ffmpeg -y -i "{input_path}" "{output_path}"')
-
     elif file_type == "image":
         run_command(f'ffmpeg -y -i "{input_path}" "{output_path}"')
-
     elif file_type == "document":
+        ext = os.path.splitext(input_path)[1].lower()
         if ext == ".pdf":
             if output_ext == ".txt":
                 run_command(f'pdftotext "{input_path}" "{output_path}"')
@@ -67,8 +55,8 @@ def convert_file(input_path, output_path, file_type, output_ext):
                 run_command(f'pdftotext "{input_path}" "{temp_txt}"')
                 run_command(f'pandoc "{temp_txt}" -o "{output_path}"')
                 os.remove(temp_txt)
-
         elif ext == ".txt" and output_ext == ".pdf":
+            from weasyprint import HTML
             temp_html = input_path.replace('.txt', '_temp.html')
             with open(input_path, 'r', encoding='utf-8') as f:
                 text_content = f.read()
@@ -77,16 +65,14 @@ def convert_file(input_path, output_path, file_type, output_ext):
                 f.write(html_content)
             HTML(temp_html).write_pdf(output_path)
             os.remove(temp_html)
-
         elif ext == ".docx" and output_ext == ".pdf":
+            from weasyprint import HTML
             temp_html = input_path.replace('.docx', '_temp.html')
             run_command(f'pandoc "{input_path}" -o "{temp_html}"')
             HTML(temp_html).write_pdf(output_path)
             os.remove(temp_html)
-
         else:
             run_command(f'pandoc "{input_path}" -o "{output_path}"')
-
     elif file_type == "archive":
         if output_path.endswith(".zip"):
             run_command(f'zip -j "{output_path}" "{input_path}"')
@@ -94,7 +80,6 @@ def convert_file(input_path, output_path, file_type, output_ext):
             run_command(f'tar -czf "{output_path}" -C "{os.path.dirname(input_path)}" "{os.path.basename(input_path)}"')
         else:
             raise Exception("❌ Format arsip tidak didukung.")
-
     else:
         raise Exception("❌ Jenis file tidak didukung.")
 

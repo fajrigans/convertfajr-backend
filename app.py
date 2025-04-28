@@ -40,9 +40,11 @@ def run_command(command):
 
 def convert_file(input_path, output_path, file_type, output_ext):
     if file_type == "video":
-        run_command(f'ffmpeg -y -i "{input_path}" -c:v libx264 -preset veryfast -crf 23 -c:a aac -strict experimental "{output_path}"')
-    elif file_type == "audio":
-        run_command(f'ffmpeg -y -i "{input_path}" "{output_path}"')
+        ext = os.path.splitext(output_path)[1].lower()
+        if ext == ".webm":
+            run_command(f'ffmpeg -y -i "{input_path}" -c:v libvpx-vp9 -b:v 1M -c:a libopus "{output_path}"')
+        else:
+            run_command(f'ffmpeg -y -i "{input_path}" -c:v libx264 -preset veryfast -crf 23 -c:a aac -strict experimental "{output_path}"')
     elif file_type == "image":
         run_command(f'ffmpeg -y -i "{input_path}" "{output_path}"')
     elif file_type == "document":

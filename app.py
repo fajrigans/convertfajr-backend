@@ -10,7 +10,7 @@ from weasyprint import HTML
 app = Flask(__name__)
 
 # ✅ CORS global configuration: Allow Vercel and local dev
-CORS(app, resources={r"/*": {"origins": ["https://fajrconvert.vercel.app", "http://localhost:5173"]}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": ["https://fajrconvert.vercel.app", "http://localhost:5173", "http://fajrconvert.my.id"]}}, supports_credentials=True)
 
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 
